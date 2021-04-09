@@ -106,7 +106,7 @@ For the Reset and Power button to turn on/off or reset the RockPro64, we connect
 | Power          | blue          | PullDown (J3)        |
 | Reset          | orange        | PullDown (J2)        |
 
-**Warning! Don't connect those cables BEFORE flashing the ESP32 firmware. Because the ESP32 is pulling those pins down at boot time, your RockPro64 (or whatever) might not boot. ESP32 firmware needs to pull them up on startup in firmware (see [below](#Inverted-Logic))!**
+**Warning! Don't connect those cables BEFORE flashing the ESP32 firmware. Because the ESP32 is pulling those pins down at boot time, your RockPro64 (or whatever) might not boot. ESP32 firmware needs to pull them up on startup in firmware (see [below](#inverted-logic))!**
 
 ---
 ## Heatbeat over GPIO
