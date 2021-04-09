@@ -103,10 +103,10 @@ For the Reset and Power button to turn on/off or reset the RockPro64, we connect
 
 | RockPro64      | Cable Color   | ESP32 Resetter       |
 | -------------- |:-------------:| --------------------:|
-| Power          | blue          | PullDown (J2)        |
-| Reset          | orange        | PullDown (J3)        |
+| Power          | blue          | PullDown (J3)        |
+| Reset          | orange        | PullDown (J2)        |
 
-**Warning! Don't connect those cables BEFORE flashing the ESP32 firmware. Because the ESP32 is pulling those pins down at boot time, your RockPro64 (or whatever) might not boot. ESP32 firmware needs to pull them up on startup in firmware (see below)!**
+**Warning! Don't connect those cables BEFORE flashing the ESP32 firmware. Because the ESP32 is pulling those pins down at boot time, your RockPro64 (or whatever) might not boot. ESP32 firmware needs to pull them up on startup in firmware (see [below](#Inverted-Logic))!**
 
 ---
 ## Heatbeat over GPIO
@@ -183,17 +183,27 @@ WantedBy=multi-user.target
 Naturally, you can start the script from hand by using something like ```systemctl start heartbeat```. If you want to start it at every boot, you have to enable the service accordingly using ```systemctl enable heartbeat```.
 
 ---
-### ESP32 Firmware
+## ESP32 Firmware
 
-Todo... inverted logic!
+### Programming
+For programming the ESP32, you need to press XP3, hold and press XP1 once, releasing XP3. This puts the ESP32 into programming mode. This should show something like
 
+```
+ets Jul 29 2019 12:21:46
 
-```C
+rst:0x1 (POWERON_RESET),boot:0x7 (DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2))
+waiting for download
+```
+
+### Example Watchdog watch script
+The basic firmware does not enable BT or Wifi at all, as this is not needed. Here is a script to watch the heart beat of a device:
+
+```cpp
 #include <Arduino.h>
 
 #define BUTTONPIN 5
 #define HEARTBEAT 16
-#define ROCKRESET 14
+#define RESETKEY 14
 #define POWERKEY 13
 
 bool in = false;
@@ -203,9 +213,10 @@ void IRAM_ATTR HandleButtonInterrupt() {
     {
       // set 100ms reset...
       in = true;
-      digitalWrite(ROCKRESET, HIGH);
+      digitalWrite(RESETKEY, HIGH);
       delay(100);
-      digitalWrite(ROCKRESET, LOW);
+      digitalWrite(RESETKEY, LOW);
+      delay(400);
     }
     in = false;
 }
@@ -218,10 +229,10 @@ void setup() {
   // define input heartbeat pin...
   pinMode(HEARTBEAT, INPUT);
 
-  // define pulldowns to be down by default
-  pinMode(ROCKRESET, OUTPUT);
+  // define pulldowns to be up by default (inverted logic)
+  pinMode(RESETKEY, OUTPUT);
   pinMode(POWERKEY, OUTPUT);
-  digitalWrite(ROCKRESET, LOW);
+  digitalWrite(RESETKEY, LOW);
   digitalWrite(POWERKEY, LOW);
 }
 
@@ -234,3 +245,77 @@ void loop() {
   }
 }
 ```
+The script does only print the current heartbeat status to the serial. The middle button XP2 is programmed to pull the RESETKEY down for about 100ms. Because the interrupt is fired multiple times probably, the guard makes sure that it is only pulled down once within 500ms.
+
+### Watchdog for RockPro64
+
+TODO:
+- implement time measurement
+- implement heartbeat to reset time based on 0/1 or 1/0 switch
+- code properly
+
+```cpp
+  // THIS IS PSEUDOCODE
+
+  int RESET_TIME = 120; // time board has to come back up after RESET
+  int LOCKUP_TIME = 30; // time board is allowed to not send heartbeat
+  long actionTaken = 0; // last time an action was taken
+  bool resetApplied = false; // reset was last action taken
+
+  // valueOn is the heartbeat
+  // it is 0 (and does not change if board is off
+  // it is 1 (and does not change if board is on and locked up)
+  // it alternates between 0 and 1 otherwise
+
+  // board is off or locked up
+  bool lockedUpOrOff = valueUnmodifiedLongerThan(LOCKUP_TIME);
+  // if last action is long ago or not
+  bool actionCountdownExceeded = (now() > (actionTaken + RESET_TIME));
+  if( lockedUpOrOff && actionCountdownExceeded )
+  {
+    if(valueIsOn) // board is on and locked up
+    {
+      // first try simple reset
+      if(!resetApplied)
+      {
+        sendReset();
+        resetApplied = true;
+      }
+      else // reset did not help, apply power off/power on
+      {
+        powerOffBoard();
+        powerOnBoard();
+        resetApplied = false;
+      }
+    }
+    else // board is off....
+    {
+      // apply power on
+      powerOnBoard();
+      resetApplied = false;
+    }
+    // sets back the timer for eval against RESET_TIME secs
+    resetUnmodifiedCountdownToCountFrom(now());
+    // records current time to know when last action was taken...
+    actionTaken = now();
+  }
+  else
+  {
+    // board is alive, so reset flags
+    resetApplied = false;
+  }
+
+```
+
+### Inverted Logic
+
+The PullDown pins of the board protect both the ESP32 and the board to drive from high currents. As a side effect, the **logic is inverted**. In code, the PullDown pins must be pulled HIGH for them to pull to GND. In order to pull them up, one has to apply LOW.
+
+---
+# Notes
+
+## Known issues (v1.0)
+- Thermoresistor on board is non-functional due to wiring to non-ADC pin (GPIO 18)
+
+## HW Changelog
+- v1.0 as of Apr. 9 2021
