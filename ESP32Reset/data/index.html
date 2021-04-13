@@ -1,0 +1,68 @@
+<!DOCTYPE HTML><html>
+<!-- Clemens Arth, AR4 GmbH 2021, based on an example by
+Rui Santos - Complete project details at https://RandomNerdTutorials.com
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software. -->
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- <script src="/highcharts.js"></script> -->
+  <style>
+    body {
+      min-width: 310px;
+    	max-width: 800px;
+    	height: 400px;
+      margin: 0 auto;
+    }
+    h2 {
+      font-family: Arial;
+      font-size: 2.5rem;
+      text-align: center;
+    }
+  </style>
+  <!--Import Google Icon Font-->
+  <link type="text/css" href="/icon.css" rel="stylesheet">
+  <!--Import materialize.css-->
+  <link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
+</head>
+<body>
+  <h2>ESP32 Watchdog</h2>
+  <button type="button" class="waves-effect waves-purple btn-large" onclick="runReset();"><i class="material-icons right">autorenew</i>Reset Board</button>
+  <!--
+  <button type="button" class="waves-effect waves-light btn-large" onclick="runShutdown();"><i class="material-icons right">power_settings_new</i>Shutdown Board</button>
+  -->
+  <!-- <a id="hbicon" class="waves-effect waves-light btn-large"><i class="material-icons right">hourglass_empty</i>HeartBeat</a> -->
+
+</body>
+<script>
+
+function runReset() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET", "/reset", true);
+  xhttp.send();
+}
+/*
+function runShutdown() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET", "/shutdown", true);
+  xhttp.send();
+}
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      val = parseInt(this.responseText);
+      if(val > 0) {
+          document.getElementById("hbicon").className = "waves-effect waves-light btn-large";
+      } else {
+          document.getElementById("hbicon").className = "waves-effect waves-light btn-small";
+      }
+    }
+  };
+  xhttp.open("GET", "/hbval", true);
+  xhttp.send();
+}, 400 ) ; */
+</script>
+<script type="text/javascript" src="js/materialize.min.js"></script>
+</html>
