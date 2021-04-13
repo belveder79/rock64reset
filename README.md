@@ -5,7 +5,7 @@ This repository contains a collection of scripts, tools and other documentations
 ![ESP32 Reset Board](images/board.png "ESP32 Reset Board")
 
 Features at a glance:
-- 5-12V input voltage
+- 7V - 36V input voltage
 - ESP32 programmable interface with onboard UART2Serial converter with USB-C connector
 - 3 programmable buttons
 - 2 pull-down outputs, 2 pull-up outputs
@@ -25,6 +25,12 @@ The temperature sensor is isolated from the rest of the board to enable driving 
 The sensor is a [Sensirion SHT31 sensor](https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensors-for-various-applications/) which is accessed and controlled over I2C. Proper libraries can be found e.g. for the [Adafruit](https://github.com/adafruit/Adafruit_SHT31) implementation.
 
 *Note: It is still possible to use the entire ESP32 circuit NOT as a watchdog, but rather as a Node-MCU with integrated temperature sensor. In order to make this possible, some resistors (R22-R24) need to be populated with 0 Ohm (or just shortcutted). This wires the SHT31 straight to the I2C bus on the ESP32.*
+
+| GPIO (ESP32) | SHT31       |
+| -------------|:-----------:|
+| GPIO21 (SDA) | SDA         |
+| GPIO22 (SCL) | SCL         |
+| 3.3V   (VCC) | VCC         |
 
 ### Simple Python Script
 
@@ -87,24 +93,25 @@ For wiring for example the RockPro64 correctly, the following setup is applied:
 
 ![RockPro64 Wiring](images/rockpro64.jpg "RockPro64 Wiring")
 
-In more detail, the wiring in our case is:
+In more detail, the wiring in our case is (alternatives in brackets):
 
-| GPIO (RockPro64) | Cable Color   | ESP32 Resetter       |
-| ---------------  |:-------------:| --------------------:|
-| Pin 1            | brown         | VCC (SHT31)          |
-| Pin 8            | grey          | Heartbeat (J4)       |
-| Pin 9            | white         | GND (SHT31)          |
-| Pin 27           | violet        | SDA (SHT31)          |
-| Pin 28           | white         | SCL (SHT31)          |
+| GPIO (RockPro64) | Cable Color         | ESP32 Resetter                 |
+| ---------------  |:-------------------:| :-----------------------------:|
+| Pin 17 (Pin 1)   | violet (brown)      | VCC (SHT31)                    |
+| Pin 16           | blue                | Heartbeat (J4 - GPIO16)        |
+| Pin 8            | grey                | Power Status (J7 - GPIO17)     |
+| Pin 20 (Pin 9)   | black (white)       | GND (SHT31)                    |
+| Pin 27           | violet              | SDA (SHT31)                    |
+| Pin 28           | white               | SCL (SHT31)                    |
 
 While the color coding is not really optimal, it's a direct result of choosing a 40-pin ribbon cable from [Bewinner](https://www.amazon.de/gp/product/B07P4LFM14/ref=ppx_yo_dt_b_asin_title_o07_s00?ie=UTF8&psc=1) and cutting out the relevant cables.
 
 For the Reset and Power button to turn on/off or reset the RockPro64, we connect the following pins (note that on the RockPro64 these pins have to be assembled manually):
 
-| RockPro64      | Cable Color   | ESP32 Resetter       |
-| -------------- |:-------------:| --------------------:|
-| Power          | blue          | PullDown (J3)        |
-| Reset          | orange        | PullDown (J2)        |
+| RockPro64      | Cable Color   | ESP32 Resetter              |
+| -------------- |:-------------:| :--------------------------:|
+| Power          | blue          | PullDown (J3 - GPIO13)        |
+| Reset          | orange        | PullDown (J2 - GPIO14)        |
 
 **Warning! Don't connect those cables BEFORE flashing the ESP32 firmware. Because the ESP32 is pulling those pins down at boot time, your RockPro64 (or whatever) might not boot. ESP32 firmware needs to pull them up on startup in firmware (see [below](#inverted-logic))!**
 
@@ -131,8 +138,10 @@ from time import sleep
 
 print("Output Test R64.GPIO Module...")
 
-# Set Variables -> in this case we are at pin 8, aka GPIO #148
-var_gpio_out = 148
+# Set Variables -> in this case we are at
+# pin 16, aka GPIO #36
+# alternatively use pin 8, aka GPIO #148, but we use this for detecting power status
+var_gpio_out = 36
 
 # GPIO Setup
 GPIO.setwarnings(True)
@@ -255,55 +264,186 @@ TODO:
 - code properly
 
 ```cpp
-  // THIS IS PSEUDOCODE
+#include <Arduino.h>
 
-  int RESET_TIME = 120; // time board has to come back up after RESET
-  int LOCKUP_TIME = 30; // time board is allowed to not send heartbeat
-  long actionTaken = 0; // last time an action was taken
-  bool resetApplied = false; // reset was last action taken
+#define BUTTONPIN 5
+#define HEARTBEAT 16
+#define POWERWATCH 17
+#define ROCKRESET 14
+#define ROCKPOWER 13
+// #define TMPRT 35 // 30
 
-  // valueOn is the heartbeat
-  // it is 0 (and does not change if board is off
+bool in = false;
+void IRAM_ATTR HandleButtonInterrupt() {
+    Serial.println("Interrupt from Button!");
+    if(!in)
+    {
+      // set 100ms reset...
+      in = true;
+      digitalWrite(ROCKRESET, HIGH);
+      delay(100);
+      digitalWrite(ROCKRESET, LOW);
+    }
+    in = false;
+}
+
+void convertMillis(unsigned long milli, unsigned long& hour, unsigned long &minute, unsigned long &second, unsigned long &remainder)
+{
+  //3600000 milliseconds in an hour
+  hour = milli / 3600000;
+  milli = milli - 3600000 * hour;
+  //60000 milliseconds in a minute
+  minute = milli / 60000;
+  milli = milli - 60000 * minute;
+
+  //1000 milliseconds in a second
+  second = milli / 1000;
+  remainder = milli - 1000 * second;
+}
+
+void setup() {
+
+  Serial.begin(115200);
+  // attach an interrupt to the middle button for fun...
+  attachInterrupt(BUTTONPIN, HandleButtonInterrupt, FALLING);
+
+  // define input heartbeat pin...
+  pinMode(HEARTBEAT, INPUT);
+  pinMode(POWERWATCH, INPUT);
+
+  // define pulldowns to be down by default
+  pinMode(ROCKRESET, OUTPUT);
+  pinMode(ROCKPOWER, OUTPUT);
+  digitalWrite(ROCKRESET, LOW);
+  digitalWrite(ROCKPOWER, LOW);
+
+  delay(2000);
+}
+
+//====================================================================
+
+int LOCKUP_TIME = 10 * 1000; // time board is allowed to not send heartbeat
+int COOLDOWN_TIME = 120 * 1000; // time after action with no further action to be taken
+int HEARTBEAT_COUNT = 10;
+
+unsigned long coolDownEnd = COOLDOWN_TIME; // time when cooldown started
+bool resetApplied = false; // reset was last action taken
+unsigned long lastTimeHeartBeatChanged = 0; // last time value changed
+unsigned long lastTimeLoopIteration = 0; // general
+int lastHeartBeatValue = 0; // default to off
+int heartBeatCounter = 0;
+
+bool coolDownActive(unsigned long currentTime, unsigned long hour, unsigned long minute, unsigned long second, unsigned long remainder)
+{
+  bool active = currentTime < coolDownEnd;
+  if(active) {
+    unsigned long seconds2 = (coolDownEnd - currentTime) / 1000;
+    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Cooldown active for another %lu seconds\n", hour, minute, second, remainder, seconds2);
+  }
+  return active;
+}
+
+bool readHeartBeat(unsigned long currentTime, unsigned long hour, unsigned long minute, unsigned long second, unsigned long remainder)
+{
+  int currentPowerStatus = digitalRead(POWERWATCH);
+  Serial.printf("[%02lu:%02lu:%02lu.%03lu] Current Power Watch Status: %s\n", hour, minute, second, remainder, currentPowerStatus ? "on" : "off");
+  int currentHeartBeatValue = digitalRead(HEARTBEAT);
+  // value changed!
+  if(currentHeartBeatValue != lastHeartBeatValue)
+  {
+    lastHeartBeatValue = currentHeartBeatValue;
+    lastTimeHeartBeatChanged = currentTime;
+    if(heartBeatCounter < HEARTBEAT_COUNT) {
+      heartBeatCounter++;
+    }
+    else if(heartBeatCounter == HEARTBEAT_COUNT) {
+      Serial.printf("[%02lu:%02lu:%02lu.%03lu] Resetting cooldown timer!\n", hour, minute, second, remainder);
+      coolDownEnd = currentTime;
+      heartBeatCounter++;
+    }
+    return false;
+  }
+  else // value did not change
+  {
+    // locked up!
+    if(((currentTime > (lastTimeHeartBeatChanged + LOCKUP_TIME)) && !coolDownActive(currentTime, hour, minute, second, remainder)) || !currentPowerStatus)
+    {
+      delay(500);
+      heartBeatCounter = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
+// sends a reset signal to the RockPro64
+void sendReset(unsigned long timePullDown)
+{
+  digitalWrite(ROCKRESET, HIGH);
+  delay(timePullDown);
+  digitalWrite(ROCKRESET, LOW);
+  delay(200);
+}
+
+void sendPower(unsigned long timePullDown)
+{
+  digitalWrite(ROCKPOWER, HIGH);
+  delay(timePullDown);
+  digitalWrite(ROCKPOWER, LOW);
+  delay(200);
+}
+
+void sanityCheck()
+{
+  unsigned long currentTime = millis();
+  // safeguard overflow after 50 days or so...
+  if(lastTimeLoopIteration > currentTime)
+  {
+    lastTimeLoopIteration = currentTime;
+    coolDownEnd = currentTime;
+    delay(1000);
+    return;
+  }
+
+  unsigned long hour, minute, second, remainder;
+  convertMillis(currentTime, hour, minute, second, remainder);
+
+  // lastHeartBeatValue is the heartbeat
+  // it is 0 (and does not change if board is off)
   // it is 1 (and does not change if board is on and locked up)
   // it alternates between 0 and 1 otherwise
 
-  // board is off or locked up
-  bool lockedUpOrOff = valueUnmodifiedLongerThan(LOCKUP_TIME);
-  // if last action is long ago or not
-  bool actionCountdownExceeded = (now() > (actionTaken + RESET_TIME));
-  if( lockedUpOrOff && actionCountdownExceeded )
+  // returns true if board is off or locked up
+  if(readHeartBeat(currentTime, hour, minute, second, remainder))
   {
-    if(valueIsOn) // board is on and locked up
-    {
-      // first try simple reset
-      if(!resetApplied)
-      {
-        sendReset();
-        resetApplied = true;
-      }
-      else // reset did not help, apply power off/power on
-      {
-        powerOffBoard();
-        powerOnBoard();
-        resetApplied = false;
-      }
-    }
-    else // board is off....
-    {
-      // apply power on
-      powerOnBoard();
-      resetApplied = false;
-    }
+    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Board locked up!\n", hour, minute, second, remainder);
+    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Status is %s!\n", hour,
+      minute, second, remainder, lastHeartBeatValue > 0 ? "on" : "off");
+
+    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Send power/reset combi!\n", hour, minute, second, remainder);
+    sendPower(2000);
+    delay(1000);
+    sendReset(2000);
+
     // sets back the timer for eval against RESET_TIME secs
-    resetUnmodifiedCountdownToCountFrom(now());
-    // records current time to know when last action was taken...
-    actionTaken = now();
+    lastTimeHeartBeatChanged = currentTime;
+    // cooldown should start now!
+    coolDownEnd = currentTime + COOLDOWN_TIME;
   }
   else
   {
     // board is alive, so reset flags
-    resetApplied = false;
+    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Last value: %d - changed %lu ms ago!\n", hour,
+      minute, second, remainder, lastHeartBeatValue, currentTime - lastTimeHeartBeatChanged );
   }
+}
+
+void loop()
+{
+  // put your main code here, to run repeatedly:
+  sanityCheck();
+  delay(750);
+}
 
 ```
 
