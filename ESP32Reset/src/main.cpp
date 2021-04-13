@@ -29,14 +29,31 @@
 // Author: clemens@ar4.io (Clemens Arth)
 
 #include <Arduino.h>
-
 #include <WifiMan.h>
+
+//====================================================================
+
+#define SERIALDBG 0
+
+int LOCKUP_TIME = 10 * 1000; // time board is allowed to not send heartbeat
+int COOLDOWN_TIME = 120 * 1000; // time after action with no further action to be taken
+int HEARTBEAT_COUNT = 10;
+
+unsigned long coolDownEnd = COOLDOWN_TIME; // time when cooldown started
+bool resetApplied = false; // reset was last action taken
+unsigned long lastTimeHeartBeatChanged = 0; // last time value changed
+unsigned long lastTimeLoopIteration = 0; // general
+int lastHeartBeatValue = 0; // default to off
+int heartBeatCounter = 0;
 
 #define BUTTONPIN 5
 #define HEARTBEAT 16
 #define POWERWATCH 17
 #define ROCKRESET 14
 #define ROCKPOWER 13
+
+#include <CircularBuffer.h>
+CircularBuffer<std::string,128> optimizedBuffer;
 
 bool in = false;
 void IRAM_ATTR HandleButtonInterrupt() {
@@ -84,31 +101,29 @@ void setup() {
 
   if(!WiFiMan::instance()->init())
   {
-    Serial.println("Connecting to existing WLAN failed... Will spawn hotspot!");
+    char buf[256];
+    sprintf(buf,"Connecting to existing WLAN failed... Will spawn hotspot!\n");
+    optimizedBuffer.push(buf);
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
     WiFiMan::instance()->spawnHotSpot();
   }
+
   delay(2000);
 }
-
-//====================================================================
-
-int LOCKUP_TIME = 10 * 1000; // time board is allowed to not send heartbeat
-int COOLDOWN_TIME = 120 * 1000; // time after action with no further action to be taken
-int HEARTBEAT_COUNT = 10;
-
-unsigned long coolDownEnd = COOLDOWN_TIME; // time when cooldown started
-bool resetApplied = false; // reset was last action taken
-unsigned long lastTimeHeartBeatChanged = 0; // last time value changed
-unsigned long lastTimeLoopIteration = 0; // general
-int lastHeartBeatValue = 0; // default to off
-int heartBeatCounter = 0;
 
 bool coolDownActive(unsigned long currentTime, unsigned long hour, unsigned long minute, unsigned long second, unsigned long remainder)
 {
   bool active = currentTime < coolDownEnd;
   if(active) {
     unsigned long seconds2 = (coolDownEnd - currentTime) / 1000;
-    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Cooldown active for another %lu seconds\n", hour, minute, second, remainder, seconds2);
+    char buf[256];
+    sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Cooldown active for another %lu seconds\n", hour, minute, second, remainder, seconds2);
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
+    optimizedBuffer.push(buf);
   }
   return active;
 }
@@ -116,7 +131,12 @@ bool coolDownActive(unsigned long currentTime, unsigned long hour, unsigned long
 bool readHeartBeat(unsigned long currentTime, unsigned long hour, unsigned long minute, unsigned long second, unsigned long remainder)
 {
   int currentPowerStatus = digitalRead(POWERWATCH);
-  Serial.printf("[%02lu:%02lu:%02lu.%03lu] Current Power Watch Status: %s\n", hour, minute, second, remainder, currentPowerStatus ? "on" : "off");
+  char buf[256];
+  sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Current Power Watch Status: %s\n", hour, minute, second, remainder, currentPowerStatus ? "on" : "off");
+#if SERIALDBG
+  Serial.printf(buf);
+#endif
+  optimizedBuffer.push(buf);
   int currentHeartBeatValue = digitalRead(HEARTBEAT);
   // value changed!
   if(currentHeartBeatValue != lastHeartBeatValue)
@@ -127,7 +147,12 @@ bool readHeartBeat(unsigned long currentTime, unsigned long hour, unsigned long 
       heartBeatCounter++;
     }
     else if(heartBeatCounter == HEARTBEAT_COUNT) {
-      Serial.printf("[%02lu:%02lu:%02lu.%03lu] Resetting cooldown timer!\n", hour, minute, second, remainder);
+      char buf[256];
+      sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Resetting cooldown timer!\n", hour, minute, second, remainder);
+  #if SERIALDBG
+      Serial.printf(buf);
+  #endif
+      optimizedBuffer.push(buf);
       coolDownEnd = currentTime;
       heartBeatCounter++;
     }
@@ -163,6 +188,19 @@ void sendPower(unsigned long timePullDown)
   delay(200);
 }
 
+const char* popLog()
+{
+  std::string cur("");
+  cur.reserve(1024);
+  while(optimizedBuffer.size())
+  {
+      // cur.append(optimizedBuffer.pop().c_str());
+      cur.insert(0,optimizedBuffer.pop().c_str());
+  }
+  Serial.printf(cur.c_str());
+  return cur.c_str();
+}
+
 void sanityCheck()
 {
   unsigned long currentTime = millis();
@@ -186,11 +224,26 @@ void sanityCheck()
   // returns true if board is off or locked up
   if(readHeartBeat(currentTime, hour, minute, second, remainder))
   {
-    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Board locked up!\n", hour, minute, second, remainder);
-    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Status is %s!\n", hour,
-      minute, second, remainder, lastHeartBeatValue > 0 ? "on" : "off");
+    char buf[256];
+    sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Board locked up!\n", hour, minute, second, remainder);
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
+    optimizedBuffer.push(buf);
 
-    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Send power/reset combi!\n", hour, minute, second, remainder);
+    sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Status is %s!\n", hour,
+      minute, second, remainder, lastHeartBeatValue > 0 ? "on" : "off");
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
+    optimizedBuffer.push(buf);
+
+    sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Send power/reset combi!\n", hour, minute, second, remainder);
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
+    optimizedBuffer.push(buf);
+
     sendPower(2000);
     delay(1000);
     sendReset(2000);
@@ -203,8 +256,13 @@ void sanityCheck()
   else
   {
     // board is alive, so reset flags
-    Serial.printf("[%02lu:%02lu:%02lu.%03lu] Last value: %d - changed %lu ms ago!\n", hour,
+    char buf[256];
+    sprintf(buf,"[%02lu:%02lu:%02lu.%03lu] Last value: %d - changed %lu ms ago!\n", hour,
       minute, second, remainder, lastHeartBeatValue, currentTime - lastTimeHeartBeatChanged );
+#if SERIALDBG
+    Serial.printf(buf);
+#endif
+    optimizedBuffer.push(buf);
   }
 }
 

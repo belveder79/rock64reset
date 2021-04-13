@@ -37,6 +37,7 @@
 
 extern void sendReset(unsigned long timePullDown);
 extern void sendPower(unsigned long timePullDown);
+extern const char* popLog();
 extern int lastHeartBeatValue;
 
 const char* sendResetI(unsigned long timePullDown)
@@ -49,6 +50,15 @@ const char* sendPowerI(unsigned long timePullDown)
 {
   sendPower(timePullDown);
   return "";
+}
+
+char blubber [2048];
+const char* popLogI()
+{
+  const char* x = popLog();
+  sprintf(blubber,"%s",x);
+  blubber[strlen(x)] = '\0';
+  return blubber;
 }
 
 const char* currentHBVal()
@@ -158,10 +168,13 @@ bool WiFiMan::startServe()
       request->send_P(200, "text/plain", currentHBVal());
     });
     m_server->on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", sendResetI(250));
+      request->send_P(200, "text/plain", sendResetI(500));
     });
     m_server->on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/plain", sendPowerI(6000));
+    });
+    m_server->on("/log", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/plain", popLogI());
     });
 
     // Start server

@@ -9,16 +9,18 @@ copies or substantial portions of the Software. -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- <script src="/highcharts.js"></script> -->
   <style>
-    body {
-      min-width: 310px;
-    	max-width: 800px;
-    	height: 400px;
-      margin: 0 auto;
-    }
     h2 {
       font-family: Arial;
       font-size: 2.5rem;
       text-align: center;
+    }
+
+    .flex-container {
+      display: flex;
+    }
+
+    .fill-width {
+      flex: 1;
     }
   </style>
   <!--Import Google Icon Font-->
@@ -28,6 +30,12 @@ copies or substantial portions of the Software. -->
 </head>
 <body>
   <h2>ESP32 Watchdog</h2>
+
+  <!--<form>
+    <label for="name">Console Log:</label>
+    <input type="text" id="logbox" disabled>
+  </form>-->
+  <textarea style="width:50%;height:400px;margin:1vh;padding:1vh;font-size:0.75em;" id='logbox2' autofocus readonly> </textarea> <br>
   <button type="button" class="waves-effect waves-purple btn-large" onclick="runReset();"><i class="material-icons right">autorenew</i>Reset Board</button>
   <!--
   <button type="button" class="waves-effect waves-light btn-large" onclick="runShutdown();"><i class="material-icons right">power_settings_new</i>Shutdown Board</button>
@@ -36,12 +44,37 @@ copies or substantial portions of the Software. -->
 
 </body>
 <script>
-
+/*
+$(document).ready(function() {
+  $('#logbox').keyup(function() {
+    $(this).attr('size', $(this).val().length)
+  });
+});
+*/
 function runReset() {
   var xhttp = new XMLHttpRequest();
   xhttp.open("GET", "/reset", true);
   xhttp.send();
 }
+
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.responseType = 'text';
+  xhttp.onreadystatechange = function() {
+    var text = document.getElementById("logbox2").value;
+    var lines = text.split(/\r|\r\n|\n/);
+    var count = lines.length;
+    if(count > 200) {
+      document.getElementById("logbox2").value = "";
+    }
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("logbox2").value += this.responseText;
+    }
+  };
+  xhttp.open("GET", "/log", true);
+  xhttp.send();
+}, 2000 );
+
 /*
 function runShutdown() {
   var xhttp = new XMLHttpRequest();
