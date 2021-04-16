@@ -35,8 +35,8 @@
 #include <string>
 
 #define PRINT_DEBUG                 0
-#define WIFISSID                    "NETGEAR81"
-#define WIFIPWD                     "huskyjade871"
+#define WIFISSID                    "unknown"
+#define WIFIPWD                     "unknown"
 #define SERVERPORT                  80
 #define SERVEFROMSD                 0
 

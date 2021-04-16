@@ -52,12 +52,15 @@ const char* sendPowerI(unsigned long timePullDown)
   return "";
 }
 
-char blubber [2048];
+#define BUFSZ 2048
+char blubber [BUFSZ];
 const char* popLogI()
 {
   const char* x = popLog();
-  sprintf(blubber,"%s",x);
-  blubber[strlen(x)] = '\0';
+  unsigned stl = strlen(x);
+  unsigned int len2copy = stl > (BUFSZ-1) ? (BUFSZ-1) : stl;
+  memcpy(blubber,x,len2copy);
+  blubber[len2copy] = '\0';
   return blubber;
 }
 
