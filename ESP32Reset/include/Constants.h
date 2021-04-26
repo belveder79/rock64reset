@@ -34,15 +34,63 @@
 
 #include <string>
 
-#define PRINT_DEBUG                 0
-#define WIFISSID                    "unknown"
-#define WIFIPWD                     "unknown"
-#define SERVERPORT                  80
+#define BOARD_DEFAULT_CHIPID        1
+#define WIFI_DEFAULT_RESET          0
+
+#define PRINT_DEBUG                 1
+#define PRINT_VERBOSE               0
+#define DEFAULT_WIFISSID            "unknown"
+#define DEFAULT_WIFIPWD             "unknown"
+
+#define DEFAULT_SERVERPORT          80
 #define SERVEFROMSD                 0
 
-#define HOTSPOTSSID                 "rock64reset"
-#define HOTSPOTPWD                  "rock64reset"
+#define DEFAULT_HOTSPOTSSID         "rock64reset"
+#define DEFAULT_HOTSPOTPWD          "rock64reset"
 
 #define TIMEOFFSETINSECS            3600
+
+#define RSTBUTTONPIN                5
+#define FLASHBUTTONPIN              0
+
+#define FLASH_RESET_PERIOD          5000 // 5sec
+
+#define HEARTBEAT                   16
+#define POWERWATCH                  17
+#define ROCKRESET                   14
+#define ROCKPOWER                   13
+
+#define DEFAULT_LOCKUP_TIME                       10000 // time board is allowed to not send heartbeat
+#define DEFAULT_COOLDOWN_TIME                     120000 // time after action with no further action to be taken
+#define DEFAULT_HEARTBEAT_COUNT                   10
+
+#define CONFIGFILE_DEFAULT_SIZE           2048
+#define CONFIGFILE_DEFAULT_NAME           "/config.json"
+
+typedef enum : uint8_t
+{
+  BOARD = 0,
+  MAXTYPES
+} CONFIG_TYPE;
+
+typedef struct
+{} Config;
+
+typedef struct : public Config
+{
+    int chipId = BOARD_DEFAULT_CHIPID;
+    int configVersion = 0;
+    bool resetWifiSettings = WIFI_DEFAULT_RESET;
+    uint16_t serverPort = DEFAULT_SERVERPORT;
+    String hotSpotName = DEFAULT_HOTSPOTSSID;
+    String hotSpotPwd = DEFAULT_HOTSPOTPWD;
+    String wifiName = DEFAULT_WIFISSID;
+    String wifiPwd = DEFAULT_WIFIPWD;
+    int lockupTime = DEFAULT_LOCKUP_TIME;
+    int cooldownTime = DEFAULT_COOLDOWN_TIME;
+    int heartBeatCnt = DEFAULT_HEARTBEAT_COUNT;
+} BoardConfig;
+
+typedef Config*(*ConfigAccessFunction)(CONFIG_TYPE type);
 
 #endif

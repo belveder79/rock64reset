@@ -1,0 +1,13 @@
+{
+  "BoardConfig":
+  {
+    "chipId": 1,
+    "configVersion": 1,
+    "resetWifiSettings": 0,
+    "hotSpotName" : "rock64reset",
+    "hotSpotPwd" : "rock64reset",
+    "wifiName" : "NETGEAR81",
+    "wifiPwd" : "huskyjade871",
+    "serverPort" : 80
+  }
+}

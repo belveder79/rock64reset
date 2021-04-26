@@ -28,35 +28,55 @@
 //
 // Author: clemens@ar4.io (Clemens Arth)
 
-#include "WiFiMan.h"
-#include "Constants.h"
+#include <WiFiMan.h>
+#include <Constants.h>
+#include <SanityChecker.h>
+#include <ConfigManager.h>
+#include <MemLogger.h>
 
 #include <WiFi.h>
+#include "AsyncJson.h"
+#include "ArduinoJson.h"
 #include <LITTLEFS.h>
 #include <SD.h>
 
-extern void sendReset(unsigned long timePullDown);
-extern void sendPower(unsigned long timePullDown);
-extern const char* popLog();
 extern int lastHeartBeatValue;
 
-const char* sendResetI(unsigned long timePullDown)
+// INTERFACES FOR SERVING WEB
+const char* sendResetMsg(unsigned long timePullDown)
 {
-  sendReset(timePullDown);
+  SanityChecker::instance()->sendReset(timePullDown);
   return "";
 }
 
-const char* sendPowerI(unsigned long timePullDown)
+const char* sendPowerMsg(unsigned long timePullDown)
 {
-  sendPower(timePullDown);
+  SanityChecker::instance()->sendPower(timePullDown);
   return "";
+}
+
+const char* restartESP()
+{
+  ESP.restart();
+  return "";
+}
+
+void saveConfig(const char* val)
+{
+  ConfigManager::instance()->setConfigJson(val);
+}
+
+const char* getConfig()
+{
+  size_t sz;
+  return ConfigManager::instance()->getConfigJson(sz);
 }
 
 #define BUFSZ 2048
 char blubber [BUFSZ];
-const char* popLogI()
+const char* popLogMsg()
 {
-  const char* x = popLog();
+  const char* x = MemLogger::instance()->popLog();
   unsigned stl = strlen(x);
   unsigned int len2copy = stl > (BUFSZ-1) ? (BUFSZ-1) : stl;
   memcpy(blubber,x,len2copy);
@@ -64,21 +84,36 @@ const char* popLogI()
   return blubber;
 }
 
+const char* currentPowerStatus()
+{
+  char b[8];
+  sprintf(b,"%d",SanityChecker::instance()->currentPowerStatus());
+  return std::string(b).c_str();
+}
+
 const char* currentHBVal()
 {
   char b[8];
-  sprintf(b,"%d",lastHeartBeatValue);
+  sprintf(b,"%d",SanityChecker::instance()->lastHeatBeatVal());
   return std::string(b).c_str();
 }
 
 bool WiFiMan::init()
 {
+  // Trigger reset from previously saved config file...
+  BoardConfig* boardcfg = reinterpret_cast<BoardConfig*>(ConfigManager::instance()->getConfig(CONFIG_TYPE::BOARD));
+  if(boardcfg->resetWifiSettings) {
+    // fall back to default
+    boardcfg->resetWifiSettings = false;
+    ConfigManager::instance()->markConfigDirty();
+  }
+
   // Connect to Wi-Fi
   int tries = 10;
-  WiFi.begin(WIFISSID, WIFIPWD);
+  WiFi.begin(boardcfg->wifiName.c_str(), boardcfg->wifiPwd.c_str());
   while (WiFi.status() != WL_CONNECTED && tries > 0) {
     delay(1000);
-    Serial.println("Connecting to WiFi..");
+    MemLogger::instance()->logMessage("=WM: Connecting to WiFi...\n");
     tries--;
   }
 
@@ -92,20 +127,20 @@ void WiFiMan::iterate()
 {
   if(!m_servelocal)
     return;
-
 }
 
 void WiFiMan::spawnHotSpot()
 {
-  Serial.println("SPAWNING HOTSPOT!");
+  BoardConfig* boardcfg = reinterpret_cast<BoardConfig*>(ConfigManager::instance()->getConfig(CONFIG_TYPE::BOARD));
+
+  MemLogger::instance()->logMessage("=WM: SPAWNING HOTSPOT!\n");
   m_servelocal = true;
-  WiFi.softAP(HOTSPOTSSID, HOTSPOTPWD);
+  WiFi.softAP(boardcfg->hotSpotName.c_str(), boardcfg->hotSpotPwd.c_str());
 
   IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
-
-  // LEDManager::instance()->turnOnHotspotLight();
+  MemLogger::instance()->logMessage("=WM: AP IP address: ");
+  MemLogger::instance()->logMessage(IP.toString().c_str());
+  MemLogger::instance()->logMessage("\n");
 
   startServe();
 }
@@ -113,6 +148,8 @@ void WiFiMan::spawnHotSpot()
 
 bool WiFiMan::startServe()
 {
+  BoardConfig* boardcfg = reinterpret_cast<BoardConfig*>(ConfigManager::instance()->getConfig(CONFIG_TYPE::BOARD));
+
 #if !SERVEFROMSD
   if(LITTLEFS.begin())
   {
@@ -120,7 +157,7 @@ bool WiFiMan::startServe()
     // Print ESP32 Local IP Address
     Serial.println(WiFi.localIP());
 
-    m_server = new AsyncWebServer(SERVERPORT);
+    m_server = new AsyncWebServer(boardcfg->serverPort);
 
     // Route for root / web page
     m_server->on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -130,15 +167,6 @@ bool WiFiMan::startServe()
       request->send(LITTLEFS, "/index.html");
   #endif
     });
-    /*
-    m_server->on("/highcharts.js", HTTP_GET, [](AsyncWebServerRequest *request){
-  #if SERVEFROMSD
-      request->send(SD, "/highcharts.js");
-  #else
-      request->send(LITTLEFS, "/highcharts.js");
-  #endif
-    });
-    */
     m_server->on("/icon.css", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(LITTLEFS, "/icon.css");
     });
@@ -154,30 +182,59 @@ bool WiFiMan::startServe()
     m_server->on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(LITTLEFS, "/favicon.ico");
     });
-/*
-    m_server->on("/tvoc", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", SGP30Manager::instance()->getLastTVOC());
+    AsyncCallbackJsonWebHandler* handler = new AsyncCallbackJsonWebHandler("/saveconfig", [](AsyncWebServerRequest *request, JsonVariant &json) {
+      StaticJsonDocument<512> data;
+      if (json.is<JsonArray>())
+      {
+        data = json.as<JsonArray>();
+      }
+      else if (json.is<JsonObject>())
+      {
+        data = json.as<JsonObject>();
+      }
+      String cfg;
+      serializeJson(data, cfg);
+      saveConfig(cfg.c_str());
+      request->send(200, "text/plain", "OK!");
     });
-//    m_server->on("/last60mins", HTTP_GET, [](AsyncWebServerRequest *request){
-//      int32_t timeSince1970 = RTCManager::instance()->getTimeSize1970() + TIMEOFFSETINSECS;
-//      DBManager::instance()->getLast60Minutes(timeSince1970);
-//    });
-    m_server->on("/co2", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", SGP30Manager::instance()->getLastCO2());
+    m_server->addHandler(handler);
+    /*
+    m_server->on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request){
+      Serial.printf("SIZE OF PARAMS: %d\n",request->params());
+
+      String message = "";
+
+      if (request->hasParam(PARAM_MESSAGE, true)) {
+          message = request->getParam(PARAM_MESSAGE, true)->value();
+      } else {
+          message = "No message sent";
+      }
+
+      request->send(200, "text/plain", "Hello, POST: " + message);
     });
     */
-
-    m_server->on("/hbval", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", currentHBVal());
-    });
+    // m_server->on("/hbval", HTTP_GET, [](AsyncWebServerRequest *request){
+    //   request->send_P(200, "text/plain", currentHBVal());
+    // });
     m_server->on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", sendResetI(500));
+      request->send_P(200, "text/plain", sendResetMsg(500));
     });
-    m_server->on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", sendPowerI(6000));
+
+    m_server->on("/resetESP", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/plain", restartESP());
+    });
+    // m_server->on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request){
+    //   request->send_P(200, "text/plain", sendPowerMsg(6000));
+    // });
+    m_server->on("/getconfig", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "application/json", getConfig());
+    });
+
+    m_server->on("/powerstatus", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/plain", currentPowerStatus());
     });
     m_server->on("/log", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send_P(200, "text/plain", popLogI());
+      request->send_P(200, "text/plain", popLogMsg());
     });
 
     // Start server

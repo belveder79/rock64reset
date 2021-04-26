@@ -30,72 +30,173 @@ copies or substantial portions of the Software. -->
 </head>
 <body>
   <h2>ESP32 Watchdog</h2>
+  <div class="row">
+    <div class="col s6">
+      <textarea style="width:100%;height:350px;margin:1vh;padding:1vh;font-size:0.75em;" id='logbox2' autofocus readonly> </textarea>
+    </div>
+    <form class="col s6">
+      <div class="row">
+        <div class="input-field col s6">
+          <input placeholder="rock64reset" id="hotspot_ssid" type="text" value="rock64reset" class="validate">
+          <label for="hotspot_ssid">Hotspot SSID</label>
+        </div>
+        <div class="input-field col s6">
+          <input placeholder="unknown" id="wifi_ssid" type="text" value="unknown" class="validate">
+          <label for="wifi_ssid">WIFI SSID</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="input-field col s6">
+          <input placeholder="rock64reset" id="hotspot_pwd" type="text" value="rock64reset" class="validate">
+          <label for="hotspot_pwd">Hotspot Password</label>
+        </div>
 
-  <!--<form>
-    <label for="name">Console Log:</label>
-    <input type="text" id="logbox" disabled>
-  </form>-->
-  <textarea style="width:50%;height:400px;margin:1vh;padding:1vh;font-size:0.75em;" id='logbox2' autofocus readonly> </textarea> <br>
-  <button type="button" class="waves-effect waves-purple btn-large" onclick="runReset();"><i class="material-icons right">autorenew</i>Reset Board</button>
-  <!--
-  <button type="button" class="waves-effect waves-light btn-large" onclick="runShutdown();"><i class="material-icons right">power_settings_new</i>Shutdown Board</button>
-  -->
-  <!-- <a id="hbicon" class="waves-effect waves-light btn-large"><i class="material-icons right">hourglass_empty</i>HeartBeat</a> -->
-
+        <div class="input-field col s6">
+          <input placeholder="unknown" id="wifi_pwd" type="text" value="unknown" class="validate">
+          <label for="wifi_pwd">WIFI Password</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="input-field col s3">
+          <input placeholder="80" id="server_port" type="number" value="80" class="validate">
+          <label for="server_port">Server Port</label>
+        </div>
+        <div class="input-field col s3">
+          <input type="range" id="lockup_time_slider" min="5000" max="60000" step="100" value="10000" oninput="lockup_time.value=lockup_time_slider.value"/>
+          <input placeholder="10000" id="lockup_time" type="number" value="10000" step="100" class="validate" oninput="lockup_time_slider.value=lockup_time.value">
+          <label for="lockup_time">Lockup Time</label>
+        </div>
+        <div class="input-field col s3">
+          <input type="range" id="cooldown_time_slider" min="30000" max="300000" step="100" value="120000" oninput="cooldown_time.value=cooldown_time_slider.value"/>
+          <input placeholder="120000" id="cooldown_time" type="number" value="120000" step="100" class="validate" oninput="cooldown_time_slider.value=cooldown_time.value">
+          <label for="cooldown_time">Cooldown Time</label>
+        </div>
+        <div class="input-field col s3">
+          <input type="range" id="heartbeat_count_slider" min="3" max="30" step="1" value="10" oninput="heartbeat_count.value=heartbeat_count_slider.value"/>
+          <input placeholder="10" id="heartbeat_count" type="number" value="10" class="validate" oninput="heartbeat_count_slider.value=heartbeat_count.value">
+          <label for="heartbeat_count">Heartbeat Counter</label>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="row">
+    <div class="col s6">
+      <button type="button" id="reset_btn" class="waves-effect red accent-4 waves-purple btn-small" onclick="runReset();"><i class="material-icons right">autorenew</i>Reset Board</button>
+      <!-- <button type="button" id="shutdown_btn" class="waves-effect red accent-4 waves-purple btn-small" onclick="runShutdown();"><i class="material-icons right">power_settings_new</i>Shutdown Board</button> -->
+    </div>
+    <div class="col s6">
+      <button type="button" id="loadcfg_btn" class="waves-effect waves-purple btn-small" onclick="loadConfig();"><i class="material-icons right">cached</i>Load Config</button>
+      <button type="button" id="savecfg_btn" class="waves-effect waves-purple btn-small" onclick="saveConfig();"><i class="material-icons right">save</i>Save Config</button>
+      <button type="button" id="resetESP_btn" class="waves-effect red accent-4 waves-purple btn-small" onclick="runResetESP();"><i class="material-icons right">forward</i>Reset ESP32</button>
+    </div>
+  </div>
 </body>
+
 <script>
-/*
-$(document).ready(function() {
-  $('#logbox').keyup(function() {
-    $(this).attr('size', $(this).val().length)
-  });
-});
-*/
-function runReset() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.open("GET", "/reset", true);
-  xhttp.send();
-}
+  function runReset() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/reset", true);
+    xhttp.send();
+  }
 
-setInterval(function ( ) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.responseType = 'text';
-  xhttp.onreadystatechange = function() {
-    var text = document.getElementById("logbox2").value;
-    var lines = text.split(/\r|\r\n|\n/);
-    var count = lines.length;
-    if(count > 200) {
-      document.getElementById("logbox2").value = "";
-    }
-    if (this.readyState == 4 && this.status == 200) {
-      document.getElementById("logbox2").value += this.responseText;
-    }
-  };
-  xhttp.open("GET", "/log", true);
-  xhttp.send();
-}, 2000 );
+  function runResetESP() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/resetESP", true);
+    xhttp.send();
+  }
 
-/*
-function runShutdown() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.open("GET", "/shutdown", true);
-  xhttp.send();
-}
-setInterval(function ( ) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      val = parseInt(this.responseText);
-      if(val > 0) {
-          document.getElementById("hbicon").className = "waves-effect waves-light btn-large";
-      } else {
-          document.getElementById("hbicon").className = "waves-effect waves-light btn-small";
-      }
+  function runShutdown() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "/shutdown", true);
+    xhttp.send();
+  }
+
+  function loadConfig()
+  {
+    var xhttp = new XMLHttpRequest();
+    xhttp.responseType = 'application/json';
+    xhttp.onreadystatechange = function() {
+      // console.log(this.responseText);
+      var obj1 = JSON.parse(this.responseText);
+      // console.log(obj1);
+      var obj = obj1.BoardConfig;
+      document.getElementById("hotspot_ssid").value = obj.hotSpotName;
+      document.getElementById("hotspot_pwd").value = obj.hotSpotPwd;
+      document.getElementById("wifi_ssid").value = obj.wifiName;
+      document.getElementById("wifi_pwd").value = obj.wifiPwd;
+      document.getElementById("server_port").value = obj.serverPort;
+      document.getElementById("lockup_time").value = obj.lockupTime;
+      document.getElementById("lockup_time_slider").value = obj.lockupTime;
+      document.getElementById("cooldown_time_slider").value = obj.cooldownTime;
+      document.getElementById("cooldown_time").value = obj.cooldownTime;
+      document.getElementById("heartbeat_count").value = obj.heartBeatCnt;
+      document.getElementById("heartbeat_count_slider").value = obj.heartBeatCnt;
+    };
+    xhttp.open("GET", "/getconfig", true);
+    xhttp.send();
+  }
+
+  function saveConfig() {
+    var obj = {};
+    obj.BoardConfig = {};
+    obj.BoardConfig.hotSpotName =   document.getElementById("hotspot_ssid").value;
+    obj.BoardConfig.hotSpotPwd =    document.getElementById("hotspot_pwd").value;
+    obj.BoardConfig.wifiName =      document.getElementById("wifi_ssid").value;
+    obj.BoardConfig.wifiPwd =       document.getElementById("wifi_pwd").value;
+    obj.BoardConfig.serverPort =    parseInt(document.getElementById("server_port").value);
+    obj.BoardConfig.lockupTime =    parseInt(document.getElementById("lockup_time").value);
+    obj.BoardConfig.cooldownTime =  parseInt(document.getElementById("cooldown_time").value);
+    obj.BoardConfig.heartBeatCnt =  parseInt(document.getElementById("heartbeat_count").value);
+    //
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", '/saveconfig', true);
+
+    //Send the proper header information along with the request
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function() { // Call a function when the state changes.
+        if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            // Request finished. Do processing here.
+            console.log(this.responseText);
+        }
     }
-  };
-  xhttp.open("GET", "/hbval", true);
-  xhttp.send();
-}, 400 ) ; */
+    xhr.send(JSON.stringify(obj));
+  }
+
+  setInterval(function ( ) {
+    // THIS IS FOR FETCHING THE LOG
+      var xhttp = new XMLHttpRequest();
+      xhttp.responseType = 'text';
+      xhttp.onreadystatechange = function() {
+        var text = document.getElementById("logbox2").value;
+        var lines = text.split(/\r|\r\n|\n/);
+        var count = lines.length;
+        if(count > 200) {
+          document.getElementById("logbox2").value = "";
+        }
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("logbox2").value += this.responseText;
+        }
+      };
+      xhttp.open("GET", "/log", true);
+      xhttp.send();
+  /*
+      // THIS IS FOR FETCHING THE POWER STATUS
+      var xhttp2 = new XMLHttpRequest();
+      xhttp2.responseType = 'text';
+      xhttp2.onreadystatechange = function() {
+        if(parseInt(this.responseText) > 0) {
+          document.getElementById("shutdown_btn").class = "waves-effect red accent-4 waves-purple btn-small";
+        }
+        else {
+          document.getElementById("shutdown_btn").class = "waves-effect green accent-4 waves-purple btn-small";
+        }
+
+      };
+      xhttp2.open("GET", "/powerstatus", true);
+      xhttp2.send();
+  */
+
+  }, 2000 );
 </script>
 <script type="text/javascript" src="js/materialize.min.js"></script>
 </html>
