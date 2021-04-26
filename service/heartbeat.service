@@ -1,0 +1,14 @@
+[Unit]
+Description=HeartBeatService
+After=network.target
+
+[Service]
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /mnt/dietpi_userdata/heartbeat/heartbeat.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
