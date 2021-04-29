@@ -454,6 +454,9 @@ The PullDown pins of the board protect both the ESP32 and the board to drive fro
 ---
 # Notes
 
+## Hardware files
+- We will not open-source the hardware files, but you can acquire the watchdog from [AR4 GmbH](https://www.ar4.io). Drop us an [email](mailto:sales@vizar.io).
+
 ## Known issues (v1.0)
 - Thermoresistor on board is non-functional due to wiring to non-ADC pin (GPIO 18)
 
