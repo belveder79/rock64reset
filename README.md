@@ -451,6 +451,12 @@ void loop()
 
 The PullDown pins of the board protect both the ESP32 and the board to drive from high currents. As a side effect, the **logic is inverted**. In code, the PullDown pins must be pulled HIGH for them to pull to GND. In order to pull them up, one has to apply LOW.
 
+## Standard ESP config interface
+
+In order to configure standard settings, the ESP32 exposes a standard interface. The configuration can be loaded and saved and will sustain any power loss or restart. The default config values are uploaded along the file system and are listed in `config.json`. To reset the watchdog to its defaults without flashing the filesystem again, the flash button (XP3) for more than 5 seconds (see `Constants.h` file for defined period.)
+
+![ESP32 Config Interface](images/ESP32_interface.png "ESP32 web config")
+
 ---
 # Notes
 
