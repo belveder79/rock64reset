@@ -6,8 +6,8 @@
     "resetWifiSettings": 0,
     "hotSpotName" : "rock64reset",
     "hotSpotPwd" : "rock64reset",
-    "wifiName" : "unknown",
-    "wifiPwd" : "unknown",
+    "wifiName" : "",
+    "wifiPwd" : "",
     "serverPort" : 80
   }
 }

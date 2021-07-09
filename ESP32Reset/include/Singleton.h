@@ -31,6 +31,8 @@
 #ifndef _SINGLETON_H_INCLUDED_
 #define _SINGLETON_H_INCLUDED_
 
+#include <Arduino.h>
+
 template <typename C> class Singleton
 {
 public:

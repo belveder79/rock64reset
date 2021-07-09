@@ -34,6 +34,8 @@
 
 #include <string>
 
+#define FW_VERSION                  "21.07.09.23"
+
 #define BOARD_DEFAULT_CHIPID        1
 #define WIFI_DEFAULT_RESET          0
 

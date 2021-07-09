@@ -30,6 +30,7 @@
 
 #include <Arduino.h>
 
+#include <WiFi.h>
 #include <WifiMan.h>
 #include <SanityChecker.h>
 #include <MemLogger.h>
@@ -65,6 +66,11 @@ void ICACHE_RAM_ATTR HandleFlashButtonInterrupt()
 void resetBoardToFactorySettings()
 {
     ConfigManager::instance()->deleteConfigFile();
+
+    WiFi.mode(WIFI_AP_STA); // cannot erase if not in STA mode !
+    WiFi.persistent(true);
+    WiFi.disconnect(true,true);
+    WiFi.persistent(false);
 }
 
 void setup()

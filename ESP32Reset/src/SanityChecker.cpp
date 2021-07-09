@@ -205,7 +205,9 @@ void SanityChecker::iterate(unsigned long currentTime)
     MemLogger::instance()->logMessage(buf);
 
     sendPower(2000);
+    yield();
     delay(1000);
+    yield();
     sendReset(2000);
 
     // sets back the timer for eval against RESET_TIME secs

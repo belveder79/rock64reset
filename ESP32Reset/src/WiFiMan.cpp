@@ -35,6 +35,8 @@
 #include <MemLogger.h>
 
 #include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncElegantOTA.h>
 #include "AsyncJson.h"
 #include "ArduinoJson.h"
 #include <LITTLEFS.h>
@@ -70,6 +72,11 @@ const char* getConfig()
 {
   size_t sz;
   return ConfigManager::instance()->getConfigJson(sz);
+}
+
+const char* getFWVersion()
+{
+  return FW_VERSION;
 }
 
 #define BUFSZ 2048
@@ -229,7 +236,9 @@ bool WiFiMan::startServe()
     m_server->on("/getconfig", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "application/json", getConfig());
     });
-
+    m_server->on("/fwversion", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/plain", getFWVersion());
+    });
     m_server->on("/powerstatus", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/plain", currentPowerStatus());
     });
@@ -239,6 +248,12 @@ bool WiFiMan::startServe()
 
     // Start server
     m_server->begin();
+
+    // start update server
+    MemLogger::instance()->logMessage("=WM: Starting web server for OTA firmware updates on port 8080...\n");
+    m_updateServer = new AsyncWebServer(8080);
+    AsyncElegantOTA.begin(m_updateServer);
+    m_updateServer->begin();
 
     return true;
 #if !SERVEFROMSD

@@ -77,6 +77,12 @@ copies or substantial portions of the Software. -->
           <label for="heartbeat_count">Heartbeat Counter</label>
         </div>
       </div>
+      <div class="row">
+        <div class="input-field col s3">
+          <input placeholder="10" id="fwversion" type="text" value="unknown" class="validate">
+          <label for="fwversion">Firmware Version</label>
+        </div>
+      </div>
     </form>
   </div>
   <div class="row">
@@ -134,6 +140,13 @@ copies or substantial portions of the Software. -->
     };
     xhttp.open("GET", "/getconfig", true);
     xhttp.send();
+    var xhttp2 = new XMLHttpRequest();
+    xhttp2.responseType = 'application/text';
+    xhttp2.onreadystatechange = function() {
+      document.getElementById("fwversion").value = this.responseText;
+    };
+    xhttp2.open("GET", "/fwversion", true);
+    xhttp2.send();
   }
 
   function saveConfig() {
