@@ -45,12 +45,13 @@ class WiFiMan : public Singleton <WiFiMan>
       void spawnHotSpot();
       void iterate();
    protected:
-      WiFiMan () : m_server(NULL), m_updateServer(NULL), m_servelocal(false) { }
+      WiFiMan () : m_server(NULL), m_servelocal(false) { }
    private:
      AsyncWebServer*          m_server;
-     AsyncWebServer*          m_updateServer;
      bool startServe();
      bool m_servelocal;
+
+     static void recvMsg(uint8_t *data, size_t len);
 };
 
 #endif

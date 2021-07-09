@@ -42,6 +42,8 @@
 #include <LITTLEFS.h>
 #include <SD.h>
 
+#include <WebSerial.h>
+
 extern int lastHeartBeatValue;
 
 // INTERFACES FOR SERVING WEB
@@ -246,18 +248,28 @@ bool WiFiMan::startServe()
       request->send_P(200, "text/plain", popLogMsg());
     });
 
-    // Start server
-    m_server->begin();
 
     // start update server
-    MemLogger::instance()->logMessage("=WM: Starting web server for OTA firmware updates on port 8080...\n");
-    m_updateServer = new AsyncWebServer(8080);
-    AsyncElegantOTA.begin(m_updateServer);
-    m_updateServer->begin();
+    AsyncElegantOTA.begin(m_server);//m_updateServer);
+    WebSerial.begin(m_server);//m_serialserver);
+    WebSerial.msgCallback(WiFiMan::recvMsg);
+
+    // Start server
+    m_server->begin();
 
     return true;
 #if !SERVEFROMSD
   }
   return false;
 #endif
+}
+
+void WiFiMan::recvMsg(uint8_t *data, size_t len)
+{
+  WebSerial.println("Received Data...");
+  String d = "";
+  for(int i=0; i < len; i++){
+    d += char(data[i]);
+  }
+  WebSerial.println(d);
 }
