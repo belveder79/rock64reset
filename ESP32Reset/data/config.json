@@ -8,6 +8,7 @@
     "hotSpotPwd" : "rock64reset",
     "wifiName" : "jdfstmkat35",
     "wifiPwd" : "tamara020979",
-    "serverPort" : 80
+    "serverPort" : 80,
+    "enabled" : 1
   }
 }

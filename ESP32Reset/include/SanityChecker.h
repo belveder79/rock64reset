@@ -39,6 +39,7 @@ class SanityChecker : public Singleton <SanityChecker>
    public:
       ~SanityChecker () { }
       bool init(unsigned long nowTime, uint32_t interval = 1000); // in ms...
+      void setState(bool enabled);
       void iterate(unsigned long currentTime);
       void sendPower(unsigned long timePullDown, bool ignorePowerStatus = true);
       void sendReset(unsigned long timePullDown);
@@ -54,6 +55,7 @@ class SanityChecker : public Singleton <SanityChecker>
       uint32_t                 m_pollingInterval;
       unsigned long            m_nextPoll;
 
+      bool                      m_enabled;
 
       unsigned long             m_coolDownEnd; // time when cooldown started
       bool                      m_resetApplied; // reset was last action taken

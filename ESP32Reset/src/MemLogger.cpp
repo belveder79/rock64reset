@@ -59,7 +59,7 @@ const char* MemLogger::popLog()
   {
       cur.insert(0,m_optimizedBuffer.pop().c_str());
   }
-#if PRINT_VERBOSE
+#if PRINT_DEBUG && PRINT_VERBOSE
   Serial.printf(cur.c_str());
 #endif
   return cur.c_str();

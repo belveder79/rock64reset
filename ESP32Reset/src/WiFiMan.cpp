@@ -70,6 +70,11 @@ void saveConfig(const char* val)
   ConfigManager::instance()->setConfigJson(val);
 }
 
+void setState(const bool state)
+{
+  SanityChecker::instance()->setState(state);
+}
+
 const char* getConfig()
 {
   size_t sz;
@@ -212,6 +217,23 @@ bool WiFiMan::startServe()
       request->send(200, "text/plain", "OK!");
     });
     m_server->addHandler(handler);
+
+    AsyncCallbackJsonWebHandler* handler2 = new AsyncCallbackJsonWebHandler("/wdstate", [](AsyncWebServerRequest *request, JsonVariant &json) {
+      StaticJsonDocument<512> data;
+      if (json.is<JsonArray>())
+      {
+        data = json.as<JsonArray>();
+      }
+      else if (json.is<JsonObject>())
+      {
+        data = json.as<JsonObject>();
+      }
+      setState(data["state"]);
+      request->send(200, "text/plain", "OK!");
+    });
+    m_server->addHandler(handler2);
+
+
     /*
     m_server->on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request){
       Serial.printf("SIZE OF PARAMS: %d\n",request->params());

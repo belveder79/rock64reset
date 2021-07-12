@@ -44,6 +44,8 @@
 #define DEFAULT_WIFISSID            "unknown"
 #define DEFAULT_WIFIPWD             "unknown"
 
+#define DEFAULT_WD_ENABLED          1
+
 #define DEFAULT_SERVERPORT          80
 #define SERVEFROMSD                 0
 
@@ -66,7 +68,7 @@
 #define DEFAULT_COOLDOWN_TIME                     120000 // time after action with no further action to be taken
 #define DEFAULT_HEARTBEAT_COUNT                   10
 
-#define CONFIGFILE_DEFAULT_SIZE           2048
+#define CONFIGFILE_DEFAULT_SIZE           1024
 #define CONFIGFILE_DEFAULT_NAME           "/config.json"
 
 typedef enum : uint8_t
@@ -91,6 +93,7 @@ typedef struct : public Config
     int lockupTime = DEFAULT_LOCKUP_TIME;
     int cooldownTime = DEFAULT_COOLDOWN_TIME;
     int heartBeatCnt = DEFAULT_HEARTBEAT_COUNT;
+    bool enabled = DEFAULT_WD_ENABLED;
 } BoardConfig;
 
 typedef Config*(*ConfigAccessFunction)(CONFIG_TYPE type);

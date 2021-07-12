@@ -82,6 +82,16 @@ copies or substantial portions of the Software. -->
           <input placeholder="10" id="fwversion" type="text" value="unknown" class="validate">
           <label for="fwversion">Firmware Version</label>
         </div>
+        <div class="switch">
+            <label for="enable_wd">Enable Watchdog</label><br><br>
+            <label>
+              Off
+              <input type="checkbox" id="enable_wd" checked="true" onclick="setWDState();">
+              <span class="lever"></span>
+              On
+            </label>
+
+        </div>
       </div>
     </form>
   </div>
@@ -117,31 +127,60 @@ copies or substantial portions of the Software. -->
     xhttp.send();
   }
 
+  function setWDState()
+  {
+    var obj = {};
+    obj.state = document.getElementById("enable_wd").checked;
+    //
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", '/wdstate', true);
+
+    //Send the proper header information along with the request
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function() { // Call a function when the state changes.
+        if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            // Request finished. Do processing here.
+            console.log(this.responseText);
+        }
+    }
+    xhr.send(JSON.stringify(obj));
+  }
+
   function loadConfig()
   {
     var xhttp = new XMLHttpRequest();
-    xhttp.responseType = 'application/json';
+    // xhttp.responseType = 'application/json';
     xhttp.onreadystatechange = function() {
       // console.log(this.responseText);
-      var obj1 = JSON.parse(this.responseText);
-      // console.log(obj1);
-      var obj = obj1.BoardConfig;
-      document.getElementById("hotspot_ssid").value = obj.hotSpotName;
-      document.getElementById("hotspot_pwd").value = obj.hotSpotPwd;
-      document.getElementById("wifi_ssid").value = obj.wifiName;
-      document.getElementById("wifi_pwd").value = obj.wifiPwd;
-      document.getElementById("server_port").value = obj.serverPort;
-      document.getElementById("lockup_time").value = obj.lockupTime;
-      document.getElementById("lockup_time_slider").value = obj.lockupTime;
-      document.getElementById("cooldown_time_slider").value = obj.cooldownTime;
-      document.getElementById("cooldown_time").value = obj.cooldownTime;
-      document.getElementById("heartbeat_count").value = obj.heartBeatCnt;
-      document.getElementById("heartbeat_count_slider").value = obj.heartBeatCnt;
+      try {
+        if (this.readyState === XMLHttpRequest.DONE)
+        {
+          var obj1 = JSON.parse(this.responseText);
+          // console.log(obj1);
+          var obj = obj1.BoardConfig;
+          document.getElementById("hotspot_ssid").value = obj.hotSpotName;
+          document.getElementById("hotspot_pwd").value = obj.hotSpotPwd;
+          document.getElementById("wifi_ssid").value = obj.wifiName;
+          document.getElementById("wifi_pwd").value = obj.wifiPwd;
+          document.getElementById("server_port").value = obj.serverPort;
+          document.getElementById("lockup_time").value = obj.lockupTime;
+          document.getElementById("lockup_time_slider").value = obj.lockupTime;
+          document.getElementById("cooldown_time_slider").value = obj.cooldownTime;
+          document.getElementById("cooldown_time").value = obj.cooldownTime;
+          document.getElementById("heartbeat_count").value = obj.heartBeatCnt;
+          document.getElementById("heartbeat_count_slider").value = obj.heartBeatCnt;
+          document.getElementById("enable_wd").checked = obj.enabled;
+        }
+      }
+      catch (error)
+      {
+        console.error(error);
+      }
     };
     xhttp.open("GET", "/getconfig", true);
     xhttp.send();
     var xhttp2 = new XMLHttpRequest();
-    xhttp2.responseType = 'application/text';
+    // xhttp2.responseType = 'application/text';
     xhttp2.onreadystatechange = function() {
       document.getElementById("fwversion").value = this.responseText;
     };
@@ -160,6 +199,7 @@ copies or substantial portions of the Software. -->
     obj.BoardConfig.lockupTime =    parseInt(document.getElementById("lockup_time").value);
     obj.BoardConfig.cooldownTime =  parseInt(document.getElementById("cooldown_time").value);
     obj.BoardConfig.heartBeatCnt =  parseInt(document.getElementById("heartbeat_count").value);
+    obj.BoardConfig.enabled      =  document.getElementById("enable_wd").checked;
     //
     var xhr = new XMLHttpRequest();
     xhr.open("POST", '/saveconfig', true);
@@ -178,7 +218,7 @@ copies or substantial portions of the Software. -->
   setInterval(function ( ) {
     // THIS IS FOR FETCHING THE LOG
       var xhttp = new XMLHttpRequest();
-      xhttp.responseType = 'text';
+      //xhttp.responseType = 'text';
       xhttp.onreadystatechange = function() {
         var text = document.getElementById("logbox2").value;
         var lines = text.split(/\r|\r\n|\n/);

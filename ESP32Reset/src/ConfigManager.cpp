@@ -85,6 +85,8 @@ void ConfigManager::init()
             m_BoardConfig.cooldownTime      = config["BoardConfig"].containsKey("cooldownTime")       ? config["BoardConfig"]["cooldownTime"] : DEFAULT_COOLDOWN_TIME;
             m_BoardConfig.heartBeatCnt      = config["BoardConfig"].containsKey("heartBeatCnt")       ? config["BoardConfig"]["heartBeatCnt"] : DEFAULT_HEARTBEAT_COUNT;
 
+            m_BoardConfig.enabled           = config["BoardConfig"].containsKey("enabled")            ? config["BoardConfig"]["enabled"] : DEFAULT_WD_ENABLED;
+
             printConfig();
 
             MemLogger::instance()->logMessage("=CM: JSON Config file successfully loaded!\n");
@@ -110,9 +112,14 @@ void ConfigManager::init()
     MemLogger::instance()->logMessage("=CM: Using configuration from firmware defaults\n");
 }
 
+void ConfigManager::setState(bool enabled)
+{
+  m_BoardConfig.enabled = enabled;
+}
+
 void ConfigManager::printConfig()
 {
-#if PRINT_DEBUG
+//#if PRINT_DEBUG
   char buf[256];
   MemLogger::instance()->logMessage("=CM: ================ CURRENT CONFIG ===================\n");
   sprintf(buf,"=CM: BoardConfig.chipId:            %d \n", m_BoardConfig.chipId); MemLogger::instance()->logMessage(buf);
@@ -126,8 +133,9 @@ void ConfigManager::printConfig()
   sprintf(buf,"=CM: BoardConfig.lockupTime:        %d \n", m_BoardConfig.lockupTime); MemLogger::instance()->logMessage(buf);
   sprintf(buf,"=CM: BoardConfig.cooldownTime       %d \n", m_BoardConfig.cooldownTime); MemLogger::instance()->logMessage(buf);
   sprintf(buf,"=CM: BoardConfig.heartBeatCnt       %d \n", m_BoardConfig.heartBeatCnt); MemLogger::instance()->logMessage(buf);
+  sprintf(buf,"=CM: BoardConfig.enabled            %d \n", m_BoardConfig.enabled); MemLogger::instance()->logMessage(buf);
   MemLogger::instance()->logMessage("=CM: ================ CURRENT CONFIG ===================\n");
-#endif
+//#endif
 }
 
 void ConfigManager::deleteConfigFile()
@@ -219,6 +227,7 @@ char* ConfigManager::getConfigJson(size_t &size){
   config["BoardConfig"]["lockupTime"] =         m_BoardConfig.lockupTime;
   config["BoardConfig"]["cooldownTime"] =       m_BoardConfig.cooldownTime;
   config["BoardConfig"]["heartBeatCnt"] =       m_BoardConfig.heartBeatCnt;
+  config["BoardConfig"]["enabled"] =            m_BoardConfig.enabled;
 
 
   std::unique_ptr<char[]> buf(new char[CONFIGFILE_DEFAULT_SIZE]);
@@ -244,6 +253,8 @@ void ConfigManager::setConfigJson(const char* val)
       config["BoardConfig"].containsKey("lockupTime")         ? m_BoardConfig.lockupTime   = config["BoardConfig"]["lockupTime"] : 0;
       config["BoardConfig"].containsKey("cooldownTime")       ? m_BoardConfig.cooldownTime = config["BoardConfig"]["cooldownTime"] : 0;
       config["BoardConfig"].containsKey("heartBeatCnt")       ? m_BoardConfig.heartBeatCnt = config["BoardConfig"]["heartBeatCnt"] : 0;
+
+      config["BoardConfig"].containsKey("enabled")            ? m_BoardConfig.enabled      = config["BoardConfig"]["enabled"] : 1;
 
       saveConfigToFile();
       MemLogger::instance()->logMessage("=CM: JSON Config file written successfully!\n");

@@ -51,6 +51,7 @@ bool SanityChecker::init(unsigned long nowTime, uint32_t interval)
   m_lastHeartBeatValue = 0;
   m_heartBeatCounter = 0;
 
+  m_enabled = true;
 
   MemLogger::instance()->logMessage("=SC: Initializing Sanity Checker...\n");
   // define input heartbeat pin...
@@ -80,6 +81,13 @@ void SanityChecker::convertMillis(unsigned long milli, unsigned long& hour, unsi
   //1000 milliseconds in a second
   second = milli / 1000;
   remainder = milli - 1000 * second;
+}
+
+void SanityChecker::setState(bool enabled)
+{
+    MemLogger::instance()->logMessage(enabled ? "=SC: Enable WD\n" : "=SC: Disable WD\n");
+    m_enabled = enabled;
+    ConfigManager::instance()->setState(enabled);
 }
 
 bool SanityChecker::coolDownActive(unsigned long currentTime, unsigned long hour, unsigned long minute, unsigned long second, unsigned long remainder)
@@ -193,23 +201,25 @@ void SanityChecker::iterate(unsigned long currentTime)
   // returns true if board is off or locked up
   if(readHeartBeat(currentTime, hour, minute, second, remainder))
   {
-    char buf[256];
-    sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Board locked up!\n", hour, minute, second, remainder);
-    MemLogger::instance()->logMessage(buf);
+    if(m_enabled)
+    {
+      char buf[256];
+      sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Board locked up!\n", hour, minute, second, remainder);
+      MemLogger::instance()->logMessage(buf);
 
-    sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Status is %s!\n", hour,
-      minute, second, remainder, m_lastHeartBeatValue > 0 ? "on" : "off");
-    MemLogger::instance()->logMessage(buf);
+      sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Status is %s!\n", hour,
+        minute, second, remainder, m_lastHeartBeatValue > 0 ? "on" : "off");
+      MemLogger::instance()->logMessage(buf);
 
-    sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Send power/reset combi!\n", hour, minute, second, remainder);
-    MemLogger::instance()->logMessage(buf);
+      sprintf(buf,"=SC:[%02lu:%02lu:%02lu.%03lu] Send power/reset combi!\n", hour, minute, second, remainder);
+      MemLogger::instance()->logMessage(buf);
 
-    sendPower(2000);
-    yield();
-    delay(1000);
-    yield();
-    sendReset(2000);
-
+      sendPower(2000);
+      yield();
+      delay(1000);
+      yield();
+      sendReset(2000);
+    }
     // sets back the timer for eval against RESET_TIME secs
     m_lastTimeHeartBeatChanged = currentTime;
     // cooldown should start now!

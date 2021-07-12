@@ -44,6 +44,7 @@ public:
   void markConfigDirty() { m_configDirty = true; }
   void deleteConfigFile();
   bool saveConfigToFile();
+  void setState(bool enabled);
 
   static Config* getConfigFunction(CONFIG_TYPE type);
   Config* getConfig(CONFIG_TYPE type);
