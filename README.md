@@ -451,11 +451,87 @@ void loop()
 
 The PullDown pins of the board protect both the ESP32 and the board to drive from high currents. As a side effect, the **logic is inverted**. In code, the PullDown pins must be pulled HIGH for them to pull to GND. In order to pull them up, one has to apply LOW.
 
+---
+
 ## Standard ESP config interface
 
 In order to configure standard settings, the ESP32 exposes a standard interface. The configuration can be loaded and saved and will sustain any power loss or restart. The default config values are uploaded along the file system and are listed in `config.json`. To reset the watchdog to its defaults without flashing the filesystem again, the flash button (XP3) for more than 5 seconds (see `Constants.h` file for defined period.)
 
 ![ESP32 Config Interface](images/ESP32_interface.png "ESP32 web config")
+
+## OTA Updates
+
+To update the firmware, you can use the OTA feature accessible on The interface is accessible on `http://<IP>/update`.
+
+![ESP32 OTA Interface](images/ESP32_update_interface.png "ESP32 update interface")
+
+## WebSerial
+
+The current firmware features a webserial interface piping the input directly to the
+onboard serial. The interface is accessible on `http://<IP>/webserial`. In this way it is possible to do rudimentary debugging by accessing the
+underlying board.
+
+In order to enable the login console on the underlying board, create a file called `/lib/systemd/system/serial-getty115200@.service` on the board with the following contents:
+
+```
+#  SPDX-License-Identifier: LGPL-2.1+
+#
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Serial Getty on %I
+Documentation=man:agetty(8) man:systemd-getty-generator(8)
+Documentation=http://0pointer.de/blog/projects/serial-console.html
+BindsTo=dev-%i.device
+After=dev-%i.device systemd-user-sessions.service plymouth-quit-wait.service getty-pre.target
+After=rc-local.service
+
+# If additional gettys are spawned during boot then we should make
+# sure that this is synchronized before getty.target, even though
+# getty.target didn't actually pull it in.
+Before=getty.target
+IgnoreOnIsolate=yes
+
+# IgnoreOnIsolate causes issues with sulogin, if someone isolates
+# rescue.target or starts rescue.service from multi-user.target or
+# graphical.target.
+Conflicts=rescue.service
+Before=rescue.service
+
+[Service]
+# The '-o' option value tells agetty to replace 'login' arguments with an
+# option to preserve environment (-p), followed by '--' for safety, and then
+# the entered username.
+ExecStartPre=-/bin/stty -F /dev/%I ospeed 115200 ispeed 115200
+ExecStart=-/sbin/agetty -o '-p -- \\u' --keep-baud 115200 %I $TERM
+Type=idle
+Restart=always
+UtmpIdentifier=%I
+TTYPath=/dev/%I
+TTYReset=yes
+TTYVHangup=yes
+KillMode=process
+IgnoreSIGPIPE=no
+SendSIGHUP=yes
+
+[Install]
+WantedBy=getty.target
+```
+
+and enable auto-start of the interface Running
+
+```
+systemctl enable serial-getty115200@ttyUSB0.service
+```
+
+You should be able to log into the board over the webserial interface.
+
+![ESP32 Webserial Interface](images/ESP32_webserial_interface.png "ESP32 webserial interface")
 
 ---
 # Notes

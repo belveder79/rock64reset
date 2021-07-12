@@ -47,6 +47,7 @@ class WiFiMan : public Singleton <WiFiMan>
    protected:
       WiFiMan () : m_server(NULL), m_servelocal(false) { }
    private:
+     void handleSerialData();
      AsyncWebServer*          m_server;
      bool startServe();
      bool m_servelocal;

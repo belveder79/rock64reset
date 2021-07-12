@@ -42,7 +42,7 @@
 #include <LITTLEFS.h>
 #include <SD.h>
 
-#include <WebSerial.h>
+#include <WebSerialPro.h>
 
 extern int lastHeartBeatValue;
 
@@ -134,6 +134,8 @@ bool WiFiMan::init()
 
 void WiFiMan::iterate()
 {
+  handleSerialData();
+
   if(!m_servelocal)
     return;
 }
@@ -163,8 +165,11 @@ bool WiFiMan::startServe()
   if(LITTLEFS.begin())
   {
 #endif
+
+#if PRINT_DEBUG
     // Print ESP32 Local IP Address
     Serial.println(WiFi.localIP());
+#endif
 
     m_server = new AsyncWebServer(boardcfg->serverPort);
 
@@ -251,8 +256,8 @@ bool WiFiMan::startServe()
 
     // start update server
     AsyncElegantOTA.begin(m_server);//m_updateServer);
-    WebSerial.begin(m_server);//m_serialserver);
-    WebSerial.msgCallback(WiFiMan::recvMsg);
+    WebSerialPro.begin(m_server);//m_serialserver);
+    WebSerialPro.msgCallback(WiFiMan::recvMsg);
 
     // Start server
     m_server->begin();
@@ -266,10 +271,30 @@ bool WiFiMan::startServe()
 
 void WiFiMan::recvMsg(uint8_t *data, size_t len)
 {
-  WebSerial.println("Received Data...");
   String d = "";
   for(int i=0; i < len; i++){
     d += char(data[i]);
   }
-  WebSerial.println(d);
+  //WebSerialPro.println(d);
+  Serial.println(d);
+
+  /*
+  WebSerialPro.println("Received Data...");
+  String d = "";
+  for(int i=0; i < len; i++){
+    d += char(data[i]);
+  }
+  WebSerialPro.println(d);
+  */
+}
+
+void WiFiMan::handleSerialData()
+{
+  #if !DEBUG_PRINT
+    if(Serial.available())
+    {
+      String data = Serial.readStringUntil('\n');
+      WebSerialPro.print(data);
+    }
+  #endif
 }

@@ -34,12 +34,12 @@
 
 #include <string>
 
-#define FW_VERSION                  "21.07.09.23"
+#define FW_VERSION                  "21.07.12.21"
 
 #define BOARD_DEFAULT_CHIPID        1
 #define WIFI_DEFAULT_RESET          0
 
-#define PRINT_DEBUG                 1
+#define PRINT_DEBUG                 0        // DO NOT ENABLE THIS IF USB-C IS WIRED TO ROCKPRO!!!
 #define PRINT_VERBOSE               0
 #define DEFAULT_WIFISSID            "unknown"
 #define DEFAULT_WIFIPWD             "unknown"

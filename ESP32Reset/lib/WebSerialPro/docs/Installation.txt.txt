@@ -1,0 +1,52 @@
+====================
+=== Dependencies ===
+====================
+
+Just like standard WebSerial library, you will have to install following dependencies to make it work:
+
+1. ESPAsyncWebServer (https://github.com/me-no-dev/ESPAsyncWebServer) - v1.2.3
+
+[For ESP8266]:
+2. ESPAsyncTCP (https://github.com/me-no-dev/ESPAsyncTCP) - v1.2.2
+
+[For ESP32]:
+2. AsyncTCP (https://github.com/me-no-dev/AsyncTCP) - v1.1.1
+
+
+====================
+=== Installation ===
+====================
+
+
+Arduino:
+--------
+
+Manual Install
+--------------
+
+For Windows:
+
+Download the Repository and extract the .zip in Documents > Arduino > Libraries > {Place "WebSerialPro" folder Here}
+
+
+For Linux:
+
+Download the Repository and extract the .zip in Sketchbook > Libraries > {Place "WebSerialPro" folder Here}
+
+
+
+PlatformIO:
+-----------
+
+Place the "WebSerialPro" folder in "lib" folder of your workspace.
+
+
+
+==============================================================================================
+
+Thanks for buying WebSerialPro. If you have any questions, you can contact the author directly:
+
+Ayush Sharma
+asrocks5@gmail.com
+
+
