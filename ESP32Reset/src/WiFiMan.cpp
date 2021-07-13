@@ -49,12 +49,14 @@ extern int lastHeartBeatValue;
 // INTERFACES FOR SERVING WEB
 const char* sendResetMsg(unsigned long timePullDown)
 {
+  MemLogger::instance()->logMessage("=WM: Send Reset...\n");
   SanityChecker::instance()->sendReset(timePullDown);
   return "";
 }
 
 const char* sendPowerMsg(unsigned long timePullDown)
 {
+  MemLogger::instance()->logMessage("=WM: Send Power...\n");
   SanityChecker::instance()->sendPower(timePullDown);
   return "";
 }
@@ -233,25 +235,6 @@ bool WiFiMan::startServe()
     });
     m_server->addHandler(handler2);
 
-
-    /*
-    m_server->on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request){
-      Serial.printf("SIZE OF PARAMS: %d\n",request->params());
-
-      String message = "";
-
-      if (request->hasParam(PARAM_MESSAGE, true)) {
-          message = request->getParam(PARAM_MESSAGE, true)->value();
-      } else {
-          message = "No message sent";
-      }
-
-      request->send(200, "text/plain", "Hello, POST: " + message);
-    });
-    */
-    // m_server->on("/hbval", HTTP_GET, [](AsyncWebServerRequest *request){
-    //   request->send_P(200, "text/plain", currentHBVal());
-    // });
     m_server->on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/plain", sendResetMsg(500));
     });
@@ -259,9 +242,9 @@ bool WiFiMan::startServe()
     m_server->on("/resetESP", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/plain", restartESP());
     });
-    // m_server->on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request){
-    //   request->send_P(200, "text/plain", sendPowerMsg(6000));
-    // });
+    m_server->on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/plain", sendPowerMsg(6000));
+    });
     m_server->on("/getconfig", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "application/json", getConfig());
     });

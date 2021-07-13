@@ -51,7 +51,7 @@ bool SanityChecker::init(unsigned long nowTime, uint32_t interval)
   m_lastHeartBeatValue = 0;
   m_heartBeatCounter = 0;
 
-  m_enabled = true;
+  m_enabled = boardcfg->enabled;
 
   MemLogger::instance()->logMessage("=SC: Initializing Sanity Checker...\n");
   // define input heartbeat pin...
@@ -146,23 +146,40 @@ bool SanityChecker::readHeartBeat(unsigned long currentTime, unsigned long hour,
 // sends a reset signal to the RockPro64
 void SanityChecker::sendReset(unsigned long timePullDown)
 {
+  unsigned long currentTime = millis();
+  unsigned long doneTime = currentTime+timePullDown;
+  MemLogger::instance()->logMessage("=SC: Executing RESET message\n");
   digitalWrite(ROCKRESET, HIGH);
-  delay(timePullDown);
+  while(doneTime > currentTime)
+  {
+    delay(50);
+    yield();
+    currentTime = millis();
+  }
   digitalWrite(ROCKRESET, LOW);
   delay(200);
 }
 
 void SanityChecker::sendPower(unsigned long timePullDown, bool ignorePowerStatus)
 {
+  unsigned long currentTime = millis();
+  unsigned long doneTime = currentTime+timePullDown;
   if(ignorePowerStatus)
   {
+    MemLogger::instance()->logMessage("=SC: Executing POWER message\n");
     digitalWrite(ROCKPOWER, HIGH);
-    delay(timePullDown);
+    while(doneTime > currentTime)
+    {
+      delay(50);
+      yield();
+      currentTime = millis();
+    }
     digitalWrite(ROCKPOWER, LOW);
     delay(200);
   }
   else
   {
+    MemLogger::instance()->logMessage("=SC: Ignoring POWER message\n");
     // CHECK CURRENT POWER STATUS AND DECIDE ON PULLDOWN TIMEOUT
     // work with m_lastPowerValue
 
